@@ -1,86 +1,456 @@
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml">
+<html lang="ru">
 <head>
-    <title>Быстрый старт. Размещение интерактивной карты на странице</title>
-    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
-    <script src="https://api-maps.yandex.ru/2.0-stable/?apikey=47647578-d84d-4e15-90a1-4c3096d8ecb7&load=package.standard&lang=ru-RU" type="text/javascript"></script>
-    <script>
-ymaps.ready(init);
-function init() {
-    var tinkoMap = new ymaps.Map('myMap', { center: [55.750, 47.607], zoom: 4 });
-    // Масштабирование с помощью колесика мышки
-    tinkoMap.behaviors.enable('scrollZoom');
-    // Добавляем стандартные элементы управления
- tinkoMap.controls.add('zoomControl').add('typeSelector').add('mapTools');
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>НКО Карта</title>
 
-    // Создаем метку центрального офиса
-    var centralOfficePlacemark = new ymaps.Placemark([55.790049, 38.442405], {
-        // Свойства
-        iconContent: '',
+  <!-- Yandex Maps API -->
+  <script src="https://api-maps.yandex.ru/2.1/?apikey=47647578-d84d-4e15-90a1-4c3096d8ecb7&lang=ru_RU" type="text/javascript"></script>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            arial: ['Arial', 'sans-serif'],
+            manrope: ['Manrope', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700&display=swap" rel="stylesheet">
+
+  <style>
+    #yandex-map { width: 100%; height: 100%; }
+    .filter-btn.active {
+      opacity: 1;
+      transform: scale(1.05);
+      box-shadow: 0 0 10px rgba(0,0,0,0.3);
+    }
+    .organization-card {
+      transition: all 0.3s ease;
+    }
+    .organization-card.hidden {
+      opacity: 0;
+      transform: translateY(-20px);
+      pointer-events: none;
+      height: 0;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+    }
+    .wave-bg {
+      position: absolute;
+      bottom: 0;
+      left: calc(33.33% + 18.33px);
+      width: 1056px;
+      height: 226px;
+      z-index: 1;
+    }
+  </style>
+</head>
+<body class="bg-gradient-to-b from-[#14256d] to-[#3a7cba] overflow-x-hidden">
+
+  <!-- Header -->
+  <div class="absolute top-0 left-0 w-full h-28 bg-[#d9d9d9] shadow-lg z-50"></div>
+
+  <!-- Login Button -->
+  <div class="absolute top-8 left-[calc(91.67%-17.08px)] z-50">
+    <div class="bg-[#075094] text-white px-6 py-2.5 rounded-full font-bold text-xl">
+      Войти
+    </div>
+  </div>
+
+
+
+  <!-- Search & Filters Panel -->
+  <div class="absolute top-32 left-6 w-[501px] z-50 space-y-3">
+    <!-- Search + City -->
+    <div class="flex gap-3">
+      <div class="relative">
+        <input
+          id="search-input"
+          type="text"
+          placeholder="Поиск"
+          class="w-80 h-9 pl-10 pr-3 bg-[#f3f3f5] rounded-2xl border border-[#d1d5dc] text-sm placeholder-[#717182] focus:outline-none focus:border-blue-500"
+        />
+        <svg class="absolute left-3 top-2.5 w-4 h-4 pointer-events-none" viewBox="0 0 16 16" fill="none">
+          <path d="M14 14L11.1067 11.1067" stroke="#99A1AF" strokeWidth="1.3" strokeLinecap="round"/>
+          <circle cx="6.5" cy="6.5" r="5" stroke="#99A1AF" strokeWidth="1.3"/>
+        </svg>
+      </div>
+      <div class="relative">
+        <input
+          type="text"
+          placeholder="Город"
+          class="w-40 h-9 pl-10 pr-3 bg-[#f3f3f5] rounded-2xl border border-[#d1d5dc] text-sm placeholder-[#717182] focus:outline-none"
+        />
+        <svg class="absolute left-3 top-2.5 w-4 h-4 pointer-events-none" viewBox="0 0 16 16" fill="none">
+          <path d="M8 13.5C10.4853 13.5 12.5 11.4853 12.5 9C12.5 6.51472 10.4853 4.5 8 4.5C5.51472 4.5 3.5 6.51472 3.5 9C3.5 11.4853 5.51472 13.5 8 13.5Z" stroke="#99A1AF" strokeWidth="1.3"/>
+          <path d="M8 10.5V7.5" stroke="#99A1AF" strokeWidth="1.3" strokeLinecap="round"/>
+          <circle cx="8" cy="6" r="0.5" fill="#99A1AF"/>
+        </svg>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="bg-white bg-opacity-95 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-gray-200">
+      <div class="flex items-center justify-between mb-3">
+        <span class="text-sm text-[#364153] font-arial">Тип деятельности</span>
+        <button id="reset-filters" class="text-[#155dfc] text-base font-arial hover:underline">Сбросить (<span id="active-count">0</span>)</button>
+      </div>
+      <div class="flex flex-wrap gap-2">
+        <button data-type="общественные" class="filter-btn px-4 py-1.5 rounded-full text-white text-xs font-arial transition-all" style="background:#00a63e">Общественные организации</button>
+        <button data-type="фонды" class="filter-btn px-4 py-1.5 rounded-full text-white text-xs font-arial transition-all" style="background:#1447e6">Фонды</button>
+        <button data-type="ано" class="filter-btn px-4 py-1.5 rounded-full text-white text-xs font-arial transition-all" style="background:#e60076">АНО</button>
+        <button data-type="союзы" class="filter-btn px-4 py-1.5 rounded-full text-white text-xs font-arial transition-all" style="background:#ff6900">Союзы</button>
+        <button data-type="религиозные" class="filter-btn px-4 py-1.5 rounded-full text-white text-xs font-arial transition-all" style="background:#59168b">Религиозные</button>
+        <button data-type="волонтеры" class="filter-btn px-4 py-1.5 rounded-full text-white text-xs font-arial transition-all" style="background:#e7000b">Волонтеры</button>
+        <button data-type="сообщество" class="filter-btn px-3 py-1.5 rounded-full text-white text-[11px] font-arial transition-all" style="background:#a65f00">Местное сообщество и развитие территорий</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Map -->
+  <div id="yandex-map" class="absolute left-[calc(33.33%+42.33px)] top-28 rounded-lg overflow-hidden shadow-2xl z-40"></div>
+
+  <!-- Results Counter -->
+  
+
+  <!-- Organization Cards -->
+  <div id="cards-container" class="absolute left-8 top-[382px] space-y-4 z-50">
+    <!-- Card 1 -->
+    <div data-types="общественные" data-search="юниор ангарск" class="organization-card bg-white rounded-[40px] w-[502px] h-[138px] p-4 shadow-lg relative overflow-hidden">
+      <div class="relative z-10 flex items-start justify-between">
+        <h3 class="text-xl font-arial">Ангарск</h3>
+        <div class="bg-[#00a63e] text-white px-6 py-1.5 rounded-full text-sm font-arial ml-4">Общественные организации</div>
+      </div>
+      <h2 class="mt-6 text-xl font-bold font-arial text-neutral-900">
+        Усолье-Сибирская "НАДЕЖДА"
+      </h2>
+    </div>
+
+    <!-- Card 2 -->
+    <div data-types="фонды" data-search="петербург фонд " class="organization-card bg-white rounded-[40px] w-[502px] h-[138px] p-4 shadow-lg relative overflow-hidden">
+      <div class="relative z-10 flex items-start justify-between">
+        <h3 class="text-xl font-arial">Озерск</h3>
+        <div class="bg-[#1447e6] text-white px-6 py-1.5 rounded-full text-sm font-arial ml-4">Фонды</div>
+
+      </div>
+      <h2 class="mt-4 text-xl font-bold font-arial text-neutral-900">
+        АНО "Клевер"
+      </h2>
+    </div>
+
+    <!-- Card 3 (from map) -->
+    <div data-types="ано" data-search="творим добро ано" class="organization-card bg-white rounded-[40px] w-[502px] h-[138px] p-4 shadow-lg relative overflow-hidden">
+      <div class="relative z-10 flex items-start justify-between">
+        <h3 class="text-xl font-arial">Электросталь</h3>
+        <div class="bg-[#e60076] text-white px-6 py-1.5 rounded-full text-sm font-arial ml-4">АНО</div>
+      </div>
+      <h2 class="mt-4 text-xl font-bold font-arial text-neutral-900">
+        АНО "Творим добро"
+      </h2>
+    </div>
+  </div>
+
+ <div className="absolute top-7 left-[calc(25%+18.25px)] z-50">
+  <button class="bg-[#108ce6] text-white px-6 py-3.5 rounded-full font-manrope font-bold text-2xl flex items-center gap-3 shadow-lg hover:bg-blue-700 transition">
+  
+    <div class="w-8 h-8 bg-[#00CCB6] rounded-full flex items-center justify-center">
+      <span class="text-white text-xl">+</span>
+    </div>
+  </button>
+</div>
+
+  <!-- Rosatom Logo -->
+  <div class="absolute top-4 left-4 w-48 z-50">
+    <svg viewBox="0 0 240 35" class="w-full h-auto">
+      <path d="M10 5L15 15L10 25L5 15L10 5Z" fill="#3C3C3B"/>
+      <text x="35" y="22" font-family="Arial" font-weight="bold" font-size="18" fill="#3C3C3B">РОСАТОМ</text>
+    </svg>
+  </div>
+
+  <!-- Bottom Wave -->
+  <div class="wave-bg">
+    <svg viewBox="0 0 1057 226" preserveAspectRatio="none" class="w-full h-full">
+      <path d="M0,100 Q200,50 400,100 T800,100 L1057,226 L0,226 Z" fill="#13328F" opacity="0.8"/>
+      <path d="M0,120 Q250,70 500,120 T1000,120 L1057,226 L0,226 Z" fill="#235CA7" opacity="0.7"/>
+      <path d="M0,140 Q300,90 600,140 T1057,140 L1057,226 L0,226 Z" fill="#108CE6" opacity="0.6"/>
+    </svg>
+  </div>
+
+  <!-- JavaScript -->
+  <script>
+    ymaps.ready(init);
+
+    let map, collection;
+    const organizations = [
+      {
+        coords: [55.790049, 38.442405],
         name: 'АНО "Инклюзивно-творческий клуб социальной поддержки "Творим добро"',
-        address: 'КЦ "Октябрь"ул. просп. Ленина, д. 32А, комната 57',
-        phone: 'тел:  7(925)930-32-34',
-        photo: '<img src="https://core-pht-proxy.maps.yandex.ru/v1/photos/download?photo_id=QaV2XTH1HIChusCsWpLb1w&image_size=S"/>',
-        print: 'Интеграция инвалидов и их семей в общество и культуру с помощью обеспечения трудовой занятости инвалидов, организация их досуга и реабилитации.'
-        
-    }, {
-        // Опции
-        preset: 'twirl#pinkIcon' 
-    });
-
-
-    // Создаем метку офиса продаж Сокол
-    var sokolOfficePlacemark = new ymaps.Placemark([52.726482, 103.660329], {
-        // Свойства
-        iconContent: '',
-        name: 'Усолье-Сибирская городская общественная организация "Общество защиты животных "НАДЕЖДА"',
+        address: 'КЦ "Октябрь" ул. просп. Ленина, д. 32А, комната 57',
+        phone: 'тел: 7(925)930-32-34',
+        photo: 'https://core-pht-proxy.maps.yandex.ru/v1/photos/download?photo_id=QaV2XTH1HIChusCsWpLb1w&image_size=S',
+        print: 'Интеграция инвалидов и их семей в общество и культуру...',
+        types: ['ано'],
+        search: 'творим добро москва'
+      },
+      {
+        coords: [55.766344, 60.707617],
+        name: 'АНО "Клевер"',
+        address: 'пр-кт Победы, д. 30, кв. 16',
+        phone: 'тел: 7(925)930-32-34',
+        photo: 'https://s14.stc.yc.kpcdn.net/share/i/12/12971406/wr-960.webp',
+        print: 'Реабилитация и адаптация инвалидов.',
+        types: ['фонды'],
+        search: 'клевер'
+      },
+      {
+        coords: [52.726482, 103.660329],
+        name: 'Усолье-Сибирская "НАДЕЖДА"',
         address: 'пр-т Космонавтов, 28-17',
         phone: '+7-904-133-77-99',
-        photo: '<img src="https://vki2.okcdn.ru/i?r=CFtAm_VFBkioSGBqh1JMHTbn0xoFvKe10uhkZ0_k2iKUL3WL0QWk-lnYZWv1B_n2rBkghqFtCH3kfqG7GqkvA9DbxCQamWnRBme4MgyTJgaHkvmCGdJBHKs2rCQAAAAp" width="100" height="111" />',
-        print: 'НКО "Надежда" создана для помощи бездомным животным, оказавшимся в трудной жизненной ситуации, гуманному снижению безнадзорных животных на улицах. Также основой деятельности является популяризация ответственного владения и просвещения среди населения. При организации существует приют, в котором содержится несколько десятков собак, как временного содержания (передержка), так и постоянного (хоспис инвалидов)'
-        
-    }, {
-        // Опции
-        preset: 'twirl#redStretchyIcon' // иконка растягивается под контент
-    });
-    
-    // Создаем коллекцию, в которую будем добавлять метки
-    var tinkoCollection = new ymaps.GeoObjectCollection();
+        photo: 'https://vki2.okcdn.ru/i?r=CFtAm_VFBkioSGBqh1JMHTbn0xoFvKe10uhkZ0_k2iKUL3WL0QWk-lnYZWv1B_n2rBkghqFtCH3kfqG7GqkvA9DbxCQamWnRBme4MgyTJgaHkvmCGdJBHKs2rCQAAAAp',
+        print: 'НКО "Надежда" создана для помощи бездомным животным, оказавшимся в трудной жизненной ситуации, гуманному снижению безнадзорных животных на улицах. Также основой деятельности является популяризация ответственного владения и просвещения среди населения. При организации существует приют, в котором содержится несколько десятков собак, как временного содержания (передержка), так и постоянного (хоспис инвалидов)',
+        types: ['общественные'],
+        search: 'надежда усолье животные'
+      }
+    ];
 
-    // Добавляем метки в коллекцию геообъектов
-    tinkoCollection
-        .add(centralOfficePlacemark)
-        .add(sokolOfficePlacemark);
+    function init() {
+      map = new ymaps.Map('yandex-map', {
+        center: [55.750, 47.607],
+        zoom: 4,
+        controls: ['zoomControl', 'fullscreenControl']
+      });
+      map.behaviors.enable('scrollZoom');
 
-    // Создаем шаблон для отображения контента балуна
-    var tinkoBalloonLayout = ymaps.templateLayoutFactory.createClass(
-        '<p><strong>$[properties.name]</strong></p>' +
-        '<p>$[properties.address]</p>' +
-        '<p>$[properties.phone]</p>' +
-        '<p>$[properties.photo]</p>' +
-        '<p>$[properties.print]</p>'
-    );
+      collection = new ymaps.GeoObjectCollection();
+      const balloonLayout = ymaps.templateLayoutFactory.createClass(
+        `<div class="p-3 max-w-xs bg-white rounded-lg shadow-lg">
+          <p class="font-bold text-sm">$[properties.name]</p>
+          <p class="text-xs mt-1">$[properties.address]</p>
+          <p class="text-xs">$[properties.phone]</p>
+          <img src="$[properties.photo]" class="mt-2 max-w-full h-auto rounded" />
+          <p class="text-xs mt-2">$[properties.print]</p>
+        </div>`
+      );
 
-    // Помещаем созданный шаблон в хранилище шаблонов.
-    // Теперь наш шаблон доступен по ключу 'tinko#officeslayout'
-    ymaps.layout.storage.add('tinko#officeslayout', tinkoBalloonLayout);
+      organizations.forEach(org => {
+        const placemark = new ymaps.Placemark(org.coords, {
+          name: org.name,
+          address: org.address,
+          phone: org.phone,
+          photo: org.photo,
+          print: org.print
+        }, {
+          preset: org.types.includes('общественные') ? 'islands#redStretchyIcon' : 'islands#pinkStretchyIcon'
+        });
+        placemark.orgData = org;
+        collection.add(placemark);
+      });
 
-    // Задаем наш шаблон для балунов геобъектов коллекции
-    tinkoCollection.options.set({
-        balloonContentBodyLayout:'tinko#officeslayout',
-        // Максимальная ширина балуна в пикселах
-        balloonMaxWidth: 350
-    });
+      collection.options.set({ balloonContentLayout: balloonLayout, balloonMaxWidth: 350 });
+      map.geoObjects.add(collection);
 
-    // Добавляем коллекцию геообъектов на карту
-    tinkoMap.geoObjects.add(tinkoCollection);
-}
+      // Filters logic
+      setupFilters();
+    }
+
+    function setupFilters() {
+      const filterBtns = document.querySelectorAll('.filter-btn');
+      const resetBtn = document.getElementById('reset-filters');
+      const searchInput = document.getElementById('search-input');
+      const cards = document.querySelectorAll('.organization-card');
+      const countValue = document.getElementById('count-value');
+      const activeCount = document.getElementById('active-count');
+
+      let activeFilters = new Set();
+      let searchQuery = '';
+
+      function applyFilters() {
+        let visibleCount = 0;
+
+        // Filter map markers
+        collection.each(placemark => {
+          const org = placemark.orgData;
+          const matchesType = activeFilters.size === 0 || org.types.some(t => activeFilters.has(t));
+          const matchesSearch = !searchQuery || org.search.includes(searchQuery.toLowerCase());
+          placemark.options.set('visible', matchesType && matchesSearch);
+          if (matchesType && matchesSearch) visibleCount++;
+        });
+
+        // Filter cards
+        cards.forEach(card => {
+          const types = card.dataset.types.split(' ');
+          const search = card.dataset.search;
+          const matchesType = activeFilters.size === 0 || types.some(t => activeFilters.has(t));
+          const matchesSearch = !searchQuery || search.includes(searchQuery.toLowerCase());
+          card.classList.toggle('hidden', !(matchesType && matchesSearch));
+          if (matchesType && matchesSearch) visibleCount++;
+        });
+
+        countValue.textContent = visibleCount;
+        activeCount.textContent = activeFilters.size;
+      }
+
+      filterBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          const type = btn.dataset.type;
+          if (activeFilters.has(type)) {
+            activeFilters.delete(type);
+            btn.classList.remove('active');
+          } else {
+            activeFilters.add(type);
+            btn.classList.add('active');
+          }
+          applyFilters();
+        });
+      });
+
+      resetBtn.addEventListener('click', () => {
+        activeFilters.clear();
+        filterBtns.forEach(b => b.classList.remove('active'));
+        searchInput.value = '';
+        searchQuery = '';
+        applyFilters();
+      });
+
+      searchInput.addEventListener('input', (e) => {
+        searchQuery = e.target.value.trim().toLowerCase();
+        applyFilters();
+      });
+
+      // Initial
+      applyFilters();
+    };
 </script>
-</head>
 
-<body>
-   <div id="myMap" style="width: 1700px; height: 830px;"></div>
+
+
+
+
+<!-- КНОПКА "Добавить НКО" (уже есть, но обновим) -->
+<div class="absolute top-7 left-[calc(25%+18.25px)] z-50">
+  <button id="open-add-form" class="bg-[#108ce6] text-white px-6 py-3.5 rounded-full font-manrope font-bold text-2xl flex items-center gap-3 shadow-lg hover:bg-blue-700 transition cursor-pointer">
+    Добавить НКО
+    <div class="w-8 h-8 bg-[#00CCB6] rounded-full flex items-center justify-center">
+      <span class="text-white text-xl">+</span>
+    </div>
+  </button>
+</div>
+
+<!-- ФОРМА ДОБАВЛЕНИЯ НКО (скрыта по умолчанию) -->
+<div id="add-nko-form" class="fixed inset-0 bg-black bg-opacity-50 z-[60] hidden">
+  <div class="absolute left-0 top-0 w-[554px] h-full bg-gradient-to-r from-[#080b74] to-[#225aa6] flex flex-col">
+    
+    <!-- Заголовок -->
+    <div class="h-[91px] bg-gradient-to-r from-[#070872] to-[#235ca7] flex items-end pb-2 p relative">
+      <button id="back-to-main" class="absolute left-4 top-4 flex items-center gap-2 text-white">
+        
+        <span class="text-sm">На главную</span>
+      </button>
+      <h1 class="text-white text-base ml-[170px]">Добавление новой точки</h1>
+    </div>
+
+    <!-- Форма -->
+    <div class="flex-1 overflow-y-auto p-8 space-y-6">
+      
+      <!-- Название -->
+      <div>
+        <label class="block text-white text-sm mb-1">Название</label>
+        <input type="text" placeholder="Введите название НКО" class="w-full h-9 px-3 rounded-lg bg-white text-sm text-[#717182] focus:outline-none focus:ring-2 focus:ring-blue-500">
+      </div>
+
+      <!-- Адрес -->
+      <div>
+        <label class="block text-white text-sm mb-1">Адрес</label>
+        <div class="relative">
+          <input type="text" placeholder="Введите адрес НКО" class="w-full h-9 pl-3 pr-10 rounded-lg bg-white text-sm text-[#717182] focus:outline-none focus:ring-2 focus:ring-blue-500">
+          <button class="absolute right-2 top-1/2 -translate-y-1/2">
+            <svg class="w-4 h-4" fill="none" viewBox="0 0 10 10">
+              <path d="M5 1V9M1 5H9" stroke="white" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Тип деятельности -->
+      <div>
+        <label class="block text-white text-sm mb-2">Тип деятельности</label>
+        <div class="grid grid-cols-2 gap-2">
+          <button class="bg-[#00a63e] text-white px-4 py-2 rounded-lg text-sm">Общественные организации</button>
+          <button class="bg-[#1447e6] text-white px-4 py-2 rounded-lg text-sm">Фонды</button>
+          <button class="bg-[#e60076] text-white px-4 py-2 rounded-lg text-sm">АНО</button>
+          <button class="bg-[#e7000b] text-white px-4 py-2 rounded-lg text-sm">Волонтеры</button>
+          <button class="bg-[#59168b] text-white px-4 py-2 rounded-lg text-sm">Религиозные</button>
+          <button class="bg-[#ff6900] text-white px-4 py-2 rounded-lg text-sm">Союзы</button>
+          <button class="bg-[#a65f00] text-white px-4 py-2 rounded-lg text-xs col-span-1">Местное сообщество и развитие территорий</button>
+        </div>
+      </div>
+
+      <!-- Фото -->
+      <div>
+        <label class="block text-white text-sm mb-3">Фотографии точки</label>
+        <div class="relative h-32 rounded-xl border-2 border-[#d1d5dc] border-dashed flex flex-col items-center justify-center text-white">
+          <svg class="w-8 h-8 mb-2" fill="none" viewBox="0 0 32 32">
+            <path d="M16 2L16 30M2 16L30 16" stroke="white" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="16" cy="16" r="14" stroke="white" stroke-width="2.5"/>
+          </svg>
+          <p class="text-xs text-center max-w-xs">Перетащите фотографии сюда или выберите на компьютере</p>
+        </div>
+      </div>
+
+      <!-- Описание -->
+      <div>
+        <label class="block text-white text-sm mb-1">Описание точки</label>
+        <textarea placeholder="Опишите подробнее, как выглядит НКО, как его найти, чем оно занимается..." class="w-full h-32 p-3 rounded-lg bg-white text-sm text-[#717182] resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+      </div>
+
+      <!-- Кнопка отправки -->
+      <button class="w-full bg-[#f4512a] text-white py-3 rounded-lg font-medium hover:bg-red-600 transition">
+        Сохранить и отправить на модерацию
+      </button>
+    </div>
+  </div>
+</div>
+
+
+
+<script>
+  // Элементы
+  const openBtn = document.getElementById('open-add-form');
+  const formModal = document.getElementById('add-nko-form');
+  const backBtn = document.getElementById('back-to-main');
+  const mainContent = document.getElementById('main-content');
+
+  // Открыть форму
+  openBtn.addEventListener('click', () => {
+    formModal.classList.remove('hidden');
+    mainContent.style.display = 'none';
+  });
+
+  // Вернуться назад
+  backBtn.addEventListener('click', () => {
+    formModal.classList.add('hidden');
+    mainContent.style.display = 'block';
+  });
+
+  // Закрытие по клику вне формы (опционально)
+  formModal.addEventListener('click', (e) => {
+    if (e.target === formModal) {
+      formModal.classList.add('hidden');
+      mainContent.style.display = 'block';
+    }
+  });
+</script>
+
+
 
 </body>
-
 </html>
