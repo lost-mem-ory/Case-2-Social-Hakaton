@@ -1,10 +1,13 @@
-<!-- Яндекс Карты -->
+
+-- Яндекс Карты --
 <script src="https://api-maps.yandex.ru/2.1/?apikey=47647578-d84d-4e15-90a1-4c3096d8ecb7&lang=ru_RU"></script>
 
-<!-- Tailwind CSS -->
+
+-- Tailwind CSS --
 <script src="https://cdn.tailwindcss.com"></script>
 
-<!-- Google Fonts -->
+
+-- Google Fonts --
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@700&display=swap" rel="stylesheet">
 
 
