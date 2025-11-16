@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+    <title>Быстрый старт. Размещение интерактивной карты на странице</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <script src="https://api-maps.yandex.ru/2.0-stable/?apikey=47647578-d84d-4e15-90a1-4c3096d8ecb7&load=package.standard&lang=ru-RU" type="text/javascript"></script>
+    <script>
+ymaps.ready(init);
+function init() {
+    var tinkoMap = new ymaps.Map('myMap', { center: [55.750, 47.607], zoom: 4 });
+    // Масштабирование с помощью колесика мышки
+    tinkoMap.behaviors.enable('scrollZoom');
+    // Добавляем стандартные элементы управления
+ tinkoMap.controls.add('zoomControl').add('typeSelector').add('mapTools');
+
+    // Создаем метку центрального офиса
+    var centralOfficePlacemark = new ymaps.Placemark([55.790049, 38.442405], {
+        // Свойства
+        iconContent: '',
+        name: 'АНО "Инклюзивно-творческий клуб социальной поддержки "Творим добро"',
+        address: 'КЦ "Октябрь"ул. просп. Ленина, д. 32А, комната 57',
+        phone: 'тел:  7(925)930-32-34',
+        photo: '<img src="https://core-pht-proxy.maps.yandex.ru/v1/photos/download?photo_id=QaV2XTH1HIChusCsWpLb1w&image_size=S"/>',
+        print: 'Интеграция инвалидов и их семей в общество и культуру с помощью обеспечения трудовой занятости инвалидов, организация их досуга и реабилитации.'
+        
+    }, {
+        // Опции
+        preset: 'twirl#pinkIcon' 
+    });
+
+
+    // Создаем метку офиса продаж Сокол
+    var sokolOfficePlacemark = new ymaps.Placemark([52.726482, 103.660329], {
+        // Свойства
+        iconContent: '',
+        name: 'Усолье-Сибирская городская общественная организация "Общество защиты животных "НАДЕЖДА"',
+        address: 'пр-т Космонавтов, 28-17',
+        phone: '+7-904-133-77-99',
+        photo: '<img src="https://vki2.okcdn.ru/i?r=CFtAm_VFBkioSGBqh1JMHTbn0xoFvKe10uhkZ0_k2iKUL3WL0QWk-lnYZWv1B_n2rBkghqFtCH3kfqG7GqkvA9DbxCQamWnRBme4MgyTJgaHkvmCGdJBHKs2rCQAAAAp" width="100" height="111" />',
+        print: 'НКО "Надежда" создана для помощи бездомным животным, оказавшимся в трудной жизненной ситуации, гуманному снижению безнадзорных животных на улицах. Также основой деятельности является популяризация ответственного владения и просвещения среди населения. При организации существует приют, в котором содержится несколько десятков собак, как временного содержания (передержка), так и постоянного (хоспис инвалидов)'
+        
+    }, {
+        // Опции
+        preset: 'twirl#redStretchyIcon' // иконка растягивается под контент
+    });
+    
+    // Создаем коллекцию, в которую будем добавлять метки
+    var tinkoCollection = new ymaps.GeoObjectCollection();
+
+    // Добавляем метки в коллекцию геообъектов
+    tinkoCollection
+        .add(centralOfficePlacemark)
+        .add(sokolOfficePlacemark);
+
+    // Создаем шаблон для отображения контента балуна
+    var tinkoBalloonLayout = ymaps.templateLayoutFactory.createClass(
+        '<p><strong>$[properties.name]</strong></p>' +
+        '<p>$[properties.address]</p>' +
+        '<p>$[properties.phone]</p>' +
+        '<p>$[properties.photo]</p>' +
+        '<p>$[properties.print]</p>'
+    );
+
+    // Помещаем созданный шаблон в хранилище шаблонов.
+    // Теперь наш шаблон доступен по ключу 'tinko#officeslayout'
+    ymaps.layout.storage.add('tinko#officeslayout', tinkoBalloonLayout);
+
+    // Задаем наш шаблон для балунов геобъектов коллекции
+    tinkoCollection.options.set({
+        balloonContentBodyLayout:'tinko#officeslayout',
+        // Максимальная ширина балуна в пикселах
+        balloonMaxWidth: 350
+    });
+
+    // Добавляем коллекцию геообъектов на карту
+    tinkoMap.geoObjects.add(tinkoCollection);
+}
+</script>
+</head>
+
+<body>
+   <div id="myMap" style="width: 1700px; height: 830px;"></div>
+
+</body>
+
+</html>
